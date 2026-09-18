@@ -137,3 +137,9 @@ export async function checkAvailability(handle: string) {
     reservedForLegacyOwner: false,
   };
 }
+
+export const profileService = {
+  getProfiles,
+  getProfileByHandle,
+  checkAvailability,
+};
