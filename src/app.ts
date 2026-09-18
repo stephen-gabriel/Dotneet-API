@@ -39,6 +39,7 @@ app.use((req, res, next) => {
 // API Routes
 app.use('/api/v1', profileRoutes);
 app.use('/api', healthRoutes);
+app.use('/', healthRoutes);
 
 // 404 handler
 app.use((_req, _res) => {
