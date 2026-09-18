@@ -1,37 +1,24 @@
 # Render.com deployment configuration for Dotneet API
 # https://render.com/docs/services/web
 
-service: dotneet-api
-
-# Use the backend directory as the service root
-rootDir: backend
-
-# Build command: install deps and compile TypeScript
-buildCommand:
-  - npm install
-  - npx prisma generate --schema ../prisma/schema.prisma
-  - npm run build
-
-# Start command
-startCommand: npm run start
-
-# Environment variables (set in Render dashboard)
-env:
-  # Database
-  DATABASE_URL: postgresql://neondb_owner:npg_ESl5vDfZR1BI@ep-shiny-glade-avh2d8z5-pooler.c-11.us-east-1.aws.neon.tech/neondb?sslmode=require
-
-  # Server
-  NODE_ENV: production
-
-  # CORS - add your Vercel production domain
-  ALLOWED_ORIGINS: https://dotneet.vercel.app,http://localhost:3000
-
-  # Rate limiting (optional - defaults applied in code)
-  RATE_LIMIT_WINDOW_MS: 60000
-  RATE_LIMIT_MAX_REQUESTS: 600
-
-  # Logging
-  LOG_LEVEL: info
-
-# Auto-deploy on pushes to dotneet-api branch
-autoDeploy: true
+services:
+  - type: web
+    name: dotneet-api
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npx prisma migrate deploy && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: https://dotneet.vercel.app,http://localhost:3000
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 600
+      - key: LOG_LEVEL
+        value: info
