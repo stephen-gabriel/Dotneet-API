@@ -1,6 +1,0 @@
-node_modules
-.next*
-.local-db
-package-lock.json
-screenshots
-prisma/legacy-schema.prisma
