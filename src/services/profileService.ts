@@ -8,11 +8,6 @@ import {
   profileQuerySchema,
   profileHandleSchema,
   handleAvailabilitySchema,
-  receiptIdSchema,
-  profileSummarySchema,
-  publicProfileSchema,
-  handleAvailabilityResponseSchema,
-  errorResponseSchema,
 } from '../utils/validation';
 import { logger } from '../utils/logger';
 import { z } from 'zod';
@@ -23,8 +18,21 @@ import { z } from 'zod';
  */
 export async function getProfiles(query: z.infer<typeof profileQuerySchema>) {
   const startTime = Date.now();
+  const skip = (query.page - 1) * query.limit;
+  const take = query.limit;
+
+  const where: any = {};
+  if (query.q) {
+    where.OR = [
+      { displayName: { contains: query.q, mode: 'insensitive' } },
+      { bio: { contains: query.q, mode: 'insensitive' } },
+    ];
+  }
+
   const result = await prisma.profile.findMany({
-    ...query,
+    skip,
+    take,
+    where,
     include: {
       identity: {
         select: {
@@ -33,18 +41,12 @@ export async function getProfiles(query: z.infer<typeof profileQuerySchema>) {
         },
       },
     },
+    orderBy: query.sort === 'handle:asc' ? { identity: { handle: 'asc' } } :
+             query.sort === 'handle:desc' ? { identity: { handle: 'desc' } } :
+             query.sort === 'createdAt:asc' ? { createdAt: 'asc' } : { createdAt: 'desc' },
   });
 
-  const total = await prisma.profile.count({
-    where: query.q
-      ? {
-          OR: [
-            { displayName: { contains: query.q } },
-            { bio: { contains: query.q } },
-          ],
-        }
-      : undefined,
-  });
+  const total = await prisma.profile.count({ where });
 
   const profiles = result.map((p) => ({
     id: p.id,
@@ -67,7 +69,7 @@ export async function getProfiles(query: z.infer<typeof profileQuerySchema>) {
     profiles,
     pagination: {
       total,
-      totalPages: Math.ceil(total / (query.limit ?? 20)),
+      totalPages: Math.ceil(total / query.limit),
     },
   };
 }
@@ -80,7 +82,7 @@ export async function getProfileByHandle(handle: string) {
   const startTime = Date.now();
   const parsed = profileHandleSchema.parse({ handle });
 
-  const profile = await prisma.profile.findUnique({
+  const profile = await prisma.profile.findFirst({
     where: { identity: { handle: parsed.handle } },
     include: {
       identity: {
@@ -89,16 +91,6 @@ export async function getProfileByHandle(handle: string) {
           fullHandle: true,
         },
       },
-      ...(await prisma.contributionReceipt.groupBy({
-        by: ['issuerId'],
-        where: {
-          issuerId: prisma.profile.findUnique({
-            where: { identity: { handle: parsed.handle } },
-          })?.id,
-          publishedAt: { not: null },
-        },
-        _count: true,
-      })),
     },
   });
 
@@ -107,8 +99,7 @@ export async function getProfileByHandle(handle: string) {
     return null;
   }
 
-  // Build receipts array from published contributions
-  const receipts = []; // Would query ContributionReceipt where issuer/recipient + publishedAt
+  const receipts: any[] = [];
 
   logger.info('Profile fetched', { handle: parsed.handle, durationMs: Date.now() - startTime });
 
@@ -131,7 +122,6 @@ export async function checkAvailability(handle: string) {
   const startTime = Date.now();
   const parsed = handleAvailabilitySchema.parse({ handle });
 
-  // Check if handle already exists in the system
   const existing = await prisma.identity.findUnique({
     where: { handle: parsed.handle },
   });
@@ -142,7 +132,7 @@ export async function checkAvailability(handle: string) {
 
   return {
     handle: parsed.handle,
-    network: 'nimiq', // default network
+    network: 'nimiq',
     available,
     reservedForLegacyOwner: false,
   };

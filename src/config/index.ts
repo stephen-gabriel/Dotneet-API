@@ -19,31 +19,25 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 
-const parsed = envSchema.safeParse(process.env);
-
-if (!parsed.success) {
-  console.error('❌ Invalid environment variables:');
-  console.error(parsed.error.flatten().fieldErrors);
-  process.exit(1);
-}
+const env = envSchema.parse(process.env);
 
 export const config = {
   database: {
-    url: parsed.data.DATABASE_URL,
+    url: env.DATABASE_URL,
   },
   server: {
-    port: parsed.data.PORT,
-    env: parsed.data.NODE_ENV,
+    port: env.PORT,
+    env: env.NODE_ENV,
   },
   cors: {
-    allowedOrigins: parsed.data.ALLOWED_ORIGINS.split(',').map((o) => o.trim()),
+    allowedOrigins: env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()),
   },
   rateLimit: {
-    windowMs: parsed.data.RATE_LIMIT_WINDOW_MS,
-    maxRequests: parsed.data.RATE_LIMIT_MAX_REQUESTS,
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    maxRequests: env.RATE_LIMIT_MAX_REQUESTS,
   },
   logging: {
-    level: parsed.data.LOG_LEVEL,
+    level: env.LOG_LEVEL,
   },
 } as const;
 
